@@ -22,8 +22,6 @@ if not OPENAI_API_KEY:
     raise ValueError("FATAL: OPENAI_API_KEY environment variable not set.")
 
 ASSISTANT_ID = os.getenv("ASSISTANT_ID")
-if not ASSISTANT_ID:
-    raise ValueError("FATAL: ASSISTANT_ID environment variable not set.")
 
 # --- Redis & RQ Config ---
 REDIS_URL = os.getenv("REDIS_URL")
