@@ -1,6 +1,7 @@
 import os
 import json
 import logging
+from redis import Redis
 
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import Flow
@@ -9,13 +10,12 @@ from google.auth.transport.requests import Request
 
 from utils.config import (
     GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_PROJECT_ID,
-    GOOGLE_REDIRECT_URI, CREDENTIALS_DIR, GOOGLE_AUTH_URI, GOOGLE_TOKEN_URI
+    GOOGLE_REDIRECT_URI, GOOGLE_AUTH_URI, GOOGLE_TOKEN_URI, REDIS_URL
 )
 
 logger = logging.getLogger(__name__)
+redis_conn = Redis.from_url(REDIS_URL, decode_responses=True)
 
-# The scopes define the permissions the bot is asking for.
-# Be specific and request only what you need.
 SCOPES = [
     'https://www.googleapis.com/auth/calendar',
     'https://www.googleapis.com/auth/gmail.readonly',
@@ -50,7 +50,7 @@ def get_google_auth_url(user_id: str) -> str:
     return authorization_url
 
 def save_google_credentials(user_id: str, code: str):
-    """Exchanges the authorization code for credentials and saves them."""
+    """Exchanges the authorization code for credentials and saves them to Redis."""
     client_config = {
         "web": {
             "client_id": GOOGLE_CLIENT_ID,
@@ -78,18 +78,19 @@ def save_google_credentials(user_id: str, code: str):
         'scopes': flow.credentials.scopes
     }
 
-    creds_path = os.path.join(CREDENTIALS_DIR, f"{user_id}.json")
-    with open(creds_path, 'w') as f:
-        json.dump(creds_data, f)
-    logger.info(f"Saved credentials for user {user_id} to {creds_path}")
+    # Store in Redis instead of local filesystem to survive server restarts (Railway Ephemeral Disk)
+    redis_conn.set(f"google_auth:{user_id}", json.dumps(creds_data))
+    logger.info(f"Saved credentials for user {user_id} to Redis.")
 
 def get_credentials_for_user(user_id: str) -> Credentials:
-    """Loads and returns credentials for a specific user, refreshing if necessary."""
-    creds_path = os.path.join(CREDENTIALS_DIR, f"{user_id}.json")
-    if not os.path.exists(creds_path):
+    """Loads and returns credentials for a specific user from Redis, refreshing if necessary."""
+    creds_json = redis_conn.get(f"google_auth:{user_id}")
+    
+    if not creds_json:
         raise FileNotFoundError(f"No credentials found for user {user_id}. Please re-authorize via /start.")
 
-    creds = Credentials.from_authorized_user_file(creds_path, SCOPES)
+    creds_data = json.loads(creds_json)
+    creds = Credentials.from_authorized_user_info(creds_data, SCOPES)
 
     if creds and creds.expired and creds.refresh_token:
         logger.info(f"Credentials for user {user_id} expired. Refreshing...")
@@ -102,9 +103,8 @@ def get_credentials_for_user(user_id: str) -> Credentials:
             'client_secret': creds.client_secret,
             'scopes': creds.scopes
         }
-        with open(creds_path, 'w') as f:
-            json.dump(creds_data, f)
-        logger.info(f"Refreshed and saved credentials for user {user_id}.")
+        redis_conn.set(f"google_auth:{user_id}", json.dumps(creds_data))
+        logger.info(f"Refreshed and saved credentials for user {user_id} to Redis.")
 
     return creds
 

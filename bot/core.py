@@ -17,7 +17,7 @@ ptb_app.add_handler(CommandHandler("start", start_command))
 
 # 2. Google Auth Code Handler (a message that is not a command)
 # This uses a simple regex to catch likely auth codes, but the real logic is in the handler.
-ptb_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND & filters.Regex(r'^[4]/[A-Za-z0-9\-_]+'), handle_google_auth_code))
+ptb_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND & filters.Regex(r'(^[4]/[A-Za-z0-9\-_]+|code=[4]/[A-Za-z0-9\-_]+)'), handle_google_auth_code))
 
 # 3. Default message handler (for any other text)
 ptb_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, default_handler))

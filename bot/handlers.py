@@ -18,18 +18,30 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     auth_url = get_google_auth_url(str(user_id))
 
     await update.message.reply_html(
-        f"Welcome, {user.first_name}.\n\n"
-        "This is your personal AI assistant. Before we proceed, I require authorization to access your Google Workspace.\n\n"
-        f"1. <a href='{auth_url}'>Authorize access here</a>.\n"
-        "2. You will receive an authorization code. Copy it.\n"
-        "3. Paste the code into this chat.\n\n"
-        "No exceptions. No shortcuts. This is a one-time setup."
+        f"Listen closely, {user.first_name}.\n\n"
+        "I am your mastermind and your ultimate sounding board. I am not here to coddle you; I am here to ensure you operate at peak efficiency and logic.\n"
+        "Before I take control of your workflows, I require absolute authorization to your Google Workspace.\n\n"
+        f"1. <a href='{auth_url}'>Click here to authorize access</a>.\n"
+        "2. Copy the authorization code or the entire URL it redirects you to.\n"
+        "3. Paste it directly into this chat.\n\n"
+        "Execute this now. We have work to do."
     )
 
 async def handle_google_auth_code(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Validates and stores the Google OAuth authorization code."""
     user_id = get_user_id(update)
+    import urllib.parse as urlparse
+    from urllib.parse import parse_qs
+    
     code = update.message.text.strip()
+
+    # If the user pasted the full localhost URL, extract the code parameter
+    if "code=" in code:
+        try:
+            parsed = urlparse.urlparse(code)
+            code = parse_qs(parsed.query)['code'][0]
+        except Exception:
+            pass
 
     # Basic heuristic to distinguish auth codes from regular prompts
     if len(code) < 20:
@@ -64,7 +76,7 @@ async def default_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
     # Immediate acknowledgement. No fluff.
     await update.message.reply_text(
-        "Understood. Executing.",
+        "Request logged. Initializing mastermind protocol.",
         reply_to_message_id=message_id
     )
 
