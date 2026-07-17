@@ -69,7 +69,15 @@ async def default_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     )
 
     # Offload to background worker
-    handle_complex_task.delay(
+    from rq import Queue
+    from redis import Redis
+    from utils.config import REDIS_URL
+    
+    redis_conn = Redis.from_url(REDIS_URL)
+    q = Queue(connection=redis_conn)
+    
+    q.enqueue(
+        handle_complex_task,
         user_id=str(user_id),
         chat_id=chat_id,
         prompt=prompt
