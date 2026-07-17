@@ -2,6 +2,7 @@
 python-telegram-bot[webhooks]
 fastapi
 uvicorn
+python-dotenv
 
 # AI & Task Orchestration
 openai
